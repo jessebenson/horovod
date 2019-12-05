@@ -593,7 +593,12 @@ def get_common_options(build_ext):
         raise DistutilsError('HOROVOD_GPU_BROADCAST=%s is invalid, supported '
                              'values are "", "MPI".' % gpu_broadcast)
 
-    if gpu_allreduce or gpu_allgather or gpu_broadcast:
+    gpu_reducescatter = os.environ.get('HOROVOD_GPU_REDUCESCATTER')
+    if gpu_reducescatter and gpu_reducescatter != 'MPI':
+        raise DistutilsError('HOROVOD_GPU_REDUCESCATTER=%s is invalid, supported '
+                             'values are "", "MPI".' % gpu_reducescatter)
+
+    if gpu_allreduce or gpu_allgather or gpu_broadcast or gpu_reducescatter:
         have_cuda = True
         cuda_include_dirs, cuda_lib_dirs = get_cuda_dirs(build_ext, cpp_flags)
     else:
@@ -618,7 +623,7 @@ def get_common_options(build_ext):
         ddl_include_dirs = ddl_lib_dirs = []
 
     if gpu_allreduce == 'NCCL' \
-            and (gpu_allgather == 'MPI' or gpu_broadcast == 'MPI') \
+            and (gpu_allgather == 'MPI' or gpu_broadcast == 'MPI' or gpu_reducescatter == 'MPI') \
             and not os.environ.get('HOROVOD_ALLOW_MIXED_GPU_IMPL'):
         raise DistutilsError(
             'You should not mix NCCL and MPI GPU due to a possible deadlock.\n'
@@ -747,6 +752,9 @@ def get_common_options(build_ext):
 
     if gpu_broadcast:
         MACROS += [('HOROVOD_GPU_BROADCAST', "'%s'" % gpu_broadcast[0])]
+
+    if gpu_reducescatter:
+        MACROS += [('HOROVOD_GPU_REDUCESCATTER', "'%s'" % gpu_reducescatter[0])]
 
     return dict(MACROS=MACROS,
                 INCLUDES=INCLUDES,
@@ -1165,7 +1173,7 @@ def build_torch_extension(build_ext, global_options, torch_version):
         build_cmake(build_ext, gloo_lib, 'torch', [], options)
 
     # Update HAVE_CUDA to mean that PyTorch supports CUDA. Internally, we will be checking
-    # HOROVOD_GPU_(ALLREDUCE|ALLGATHER|BROADCAST) to decide whether we should use GPU
+    # HOROVOD_GPU_(ALLREDUCE|ALLGATHER|BROADCAST|REDUCESCATTER) to decide whether we should use GPU
     # version or transfer tensors to CPU memory for those operations.
     updated_macros = set_macro(
         options['MACROS'], 'HAVE_CUDA', str(int(have_cuda)))
@@ -1238,7 +1246,7 @@ def build_torch_extension_v2(build_ext, global_options, torch_version):
             'installation does not support CUDA.')
 
     # Update HAVE_CUDA to mean that PyTorch supports CUDA. Internally, we will be checking
-    # HOROVOD_GPU_(ALLREDUCE|ALLGATHER|BROADCAST) to decide whether we should use GPU
+    # HOROVOD_GPU_(ALLREDUCE|ALLGATHER|BROADCAST|REDUCESCATTER) to decide whether we should use GPU
     # version or transfer tensors to CPU memory for those operations.
     updated_macros = set_macro(
         options['MACROS'], 'HAVE_CUDA', str(int(have_cuda)))

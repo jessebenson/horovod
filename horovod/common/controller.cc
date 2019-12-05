@@ -398,11 +398,12 @@ Response Controller::ConstructResponse(std::string& name, int joined_size) {
     }
   }
 
-  // If we are doing an allreduce or broadcast, check that all tensor shapes are
-  // identical.
+  // If we are doing an allreduce, broadcast, or reducescatter check that all
+  // tensor shapes are identical.
   if (message_type == Request::ALLREDUCE ||
       message_type == Request::ADASUM ||
-      message_type == Request::BROADCAST) {
+      message_type == Request::BROADCAST ||
+      message_type == Request::REDUCESCATTER) {
     TensorShape tensor_shape;
     for (auto dim : requests[0].tensor_shape()) {
       tensor_shape.AddDim(dim);
@@ -497,6 +498,13 @@ Response Controller::ConstructResponse(std::string& name, int joined_size) {
     }
   }
 
+  if (message_type == Request::REDUCESCATTER) {
+    if (joined_size > 0) {
+      error = true;
+      error_message_stream << "Reducescatter is not supported with Join at this time.";
+    }
+  }
+
   // If there is at least one rank that requested Join, communicate tensor sizes
   // in the response, because joined ranks don't have this info.
   if (joined_size > 0 && (message_type == Request::ALLREDUCE || message_type == Request::ADASUM)) {
@@ -577,6 +585,8 @@ Response Controller::ConstructResponse(std::string& name, int joined_size) {
     }
   } else if (message_type == Request::BROADCAST) {
     response.set_response_type(Response::BROADCAST);
+  } else if (message_type == Request::REDUCESCATTER) {
+    response.set_response_type(Response::REDUCESCATTER);
   } else if (message_type == Request::ADASUM) {
     response.set_response_type(Response::ADASUM);
     if (joined_size > 0) {
@@ -632,8 +642,9 @@ ResponseList Controller::FuseResponses(std::deque<Response>& responses) {
     responses.pop_front();
     int64_t tensor_size = 0;
     DataType dtype;
-    if (response.response_type() == Response::ResponseType::ALLREDUCE || 
-        response.response_type() == Response::ResponseType::ADASUM) {
+    if (response.response_type() == Response::ResponseType::ALLREDUCE ||
+        response.response_type() == Response::ResponseType::ADASUM ||
+        response.response_type() == Response::ResponseType::REDUCESCATTER) {
       // Attempt to add more responses to this fused response.
 
       // found_tensor can be false for ranks that did Join.
