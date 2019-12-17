@@ -1008,7 +1008,7 @@ class MPITests(tf.test.TestCase):
             with tf.device("/cpu:0"):
                 tensor = self.random_uniform(
                     [size * 4] * dim, -100, 100, dtype=dtype)
-                summed = hvd.reducescatter(tensor, average=False)
+                summed = hvd.reducescatter(tensor, op=hvd.Sum)
             expected = tensor[rank * 4:(rank + 1) * 4] * size
             max_difference = tf.reduce_max(tf.abs(summed - expected))
 
@@ -1043,7 +1043,7 @@ class MPITests(tf.test.TestCase):
             with tf.device("/cpu:0"):
                 tensor = self.random_uniform(
                     [size * 4] * dim, -100, 100, dtype=dtype)
-                summed = hvd.reducescatter(tensor, average=False)
+                summed = hvd.reducescatter(tensor, op=hvd.Sum)
             expected = tensor[rank * 4:(rank + 1) * 4] * size
             max_difference = tf.reduce_max(tf.abs(summed - expected))
 
@@ -1087,7 +1087,7 @@ class MPITests(tf.test.TestCase):
             with tf.device("/gpu:%d" % local_rank):
                 tensor = self.random_uniform(
                     [size * 4] * dim, -100, 100, dtype=dtype)
-                summed = hvd.reducescatter(tensor, average=False)
+                summed = hvd.reducescatter(tensor, op=hvd.Sum)
             expected = tensor[rank * 4:(rank + 1) * 4] * size
             max_difference = tf.reduce_max(tf.abs(summed - expected))
 
@@ -1135,7 +1135,7 @@ class MPITests(tf.test.TestCase):
             with tf.device("/gpu:%d" % local_rank):
                 tensor = self.random_uniform(
                     [size * 4] * dim, -100, 100, dtype=dtype)
-                summed = hvd.reducescatter(tensor, average=False)
+                summed = hvd.reducescatter(tensor, op=hvd.Sum)
             expected = tensor[rank * 4:(rank + 1) * 4] * size
             max_difference = tf.reduce_max(tf.abs(summed - expected))
 
@@ -1224,11 +1224,11 @@ class MPITests(tf.test.TestCase):
                     tensor = self.tfe.Variable(self.random_uniform(
                         [size * 4] * dim, -100, 100, dtype=dtype))
                     with tf.GradientTape() as tape:
-                        summed = hvd.reducescatter(tensor, average=False)
+                        summed = hvd.reducescatter(tensor, op=hvd.Sum)
                 else:
                     tensor = self.random_uniform(
                         [size * 4] * dim, -100, 100, dtype=dtype)
-                    summed = hvd.reducescatter(tensor, average=False)
+                    summed = hvd.reducescatter(tensor, op=hvd.Sum)
 
                 grad_ys = tf.ones([4] + [size * 4] * (dim - 1))
                 if _executing_eagerly():
@@ -1270,10 +1270,10 @@ class MPITests(tf.test.TestCase):
                     tensor = self.tfe.Variable(
                         self.random_uniform([size * 4] * dim, -100, 100, dtype=dtype))
                     with tf.GradientTape() as tape:
-                        summed = hvd.reducescatter(tensor, average=False)
+                        summed = hvd.reducescatter(tensor, op=hvd.Sum)
                 else:
                     tensor = self.random_uniform([size * 4] * dim, -100, 100, dtype=dtype)
-                    summed = hvd.reducescatter(tensor, average=False)
+                    summed = hvd.reducescatter(tensor, op=hvd.Sum)
 
                 grad_ys = tf.ones([4] + [size * 4] * (dim - 1))
                 if _executing_eagerly():
